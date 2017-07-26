@@ -4,7 +4,8 @@ import requests
 import re
 import collections
 
-playerRegex = '<a href="/team/roster/[\w\-]+/[a-f\d\-]+" rel="/cda-web/person-card-module.htm\?mode=data&id=[a-f\d\-]+" rev="Player" class="player-card-tooltip" title="([a-zA-Z]+, [a-zA-Z]+)"><span>[a-zA-Z]+, [a-zA-Z]+</span></a>'
+playerRegex = '(\d\d?\w?)\s+</td>\s+<td class="col-name">\s+<a href="/team/roster/[\w\-]+/[a-f\d\-]+" rel="/cda-web/person-card-module.htm\?mode=data&id=[a-f\d\-]+" rev="Player" class="player-card-tooltip" title="([a-zA-Z]+, [a-zA-Z]+)"><span>[a-zA-Z]+, [a-zA-Z]+</span></a>'
+playerRegex2 = '<a href="/team/roster/[\w\-]+/[a-f\d\-]+" rel="/cda-web/person-card-module.htm\?mode=data&id=[a-f\d\-]+" rev="Player" class="player-card-tooltip" title="([a-zA-Z]+, [a-zA-Z]+)"><span>[a-zA-Z]+, [a-zA-Z]+</span></a>'
 
 links = [("Redskins", "http://www.redskins.com/team/roster.html"),
          ("Broncos", "http://www.denverbroncos.com/team/roster.html"),
@@ -82,8 +83,11 @@ for (team, url) in links:
     p = re.compile(playerRegex)
     matches = p.finditer(rosterRawHtml)
     for match in matches:
-        [last, first] = match.group(1).split(", ")
-        rosters[team].append("{} {}".format(first, last))
+        [last, first] = match.group(2).split(", ")
+        full_name = "{} {}".format(first, last)
+        if full_name == qbs[team]:
+            print("{} {}".format(full_name, match.group(1)))
+        rosters[team].append(full_name)
 
 for roster in rosters:
     if qbs[roster] not in rosters[roster]:
