@@ -3,11 +3,11 @@
 import requests
 import re
 import collections
+import json
 
 playerRegex = '(\d\d?\w?)\s+</td>\s+<td class="col-name">\s+<a href="/team/roster/[\w\-]+/[a-f\d\-]+" rel="/cda-web/person-card-module.htm\?mode=data&id=[a-f\d\-]+" rev="Player" class="player-card-tooltip" title="([a-zA-Z]+, [a-zA-Z]+)"><span>[a-zA-Z]+, [a-zA-Z]+</span></a>'
-playerRegex2 = '<a href="/team/roster/[\w\-]+/[a-f\d\-]+" rel="/cda-web/person-card-module.htm\?mode=data&id=[a-f\d\-]+" rev="Player" class="player-card-tooltip" title="([a-zA-Z]+, [a-zA-Z]+)"><span>[a-zA-Z]+, [a-zA-Z]+</span></a>'
 
-links = [("Redskins", "http://www.redskins.com/team/roster.html"),
+team_urls = [("Redskins", "http://www.redskins.com/team/roster.html"),
          ("Broncos", "http://www.denverbroncos.com/team/roster.html"),
          ("Chiefs", "http://www.chiefs.com/team/roster.html"),
          ("Chargers", "http://www.chargers.com/team/roster"),
@@ -39,10 +39,9 @@ links = [("Redskins", "http://www.redskins.com/team/roster.html"),
          ("Rams", "http://www.therams.com/team/roster.html"),
          ("49ers", "http://www.49ers.com/team/roster.html"),
          ("Seahawks", "http://www.seahawks.com/team/roster/index.html")
-         
 ]
 
-qbs = {"Redskins": "Kirk Cousins",
+quarterbacks = {"Redskins": "Kirk Cousins",
        "Broncos": "Trevor Siemian",
        "Chiefs": "Alex Smith",
        "Chargers": "Philip Rivers",
@@ -53,7 +52,7 @@ qbs = {"Redskins": "Kirk Cousins",
        "Titans": "Marcus Mariota",
        "Ravens": "Joe Flacco",
        "Bengals": "Andy Dalton",
-       "Browns": "Brock Osweiler",
+       "Browns": "Cody Kessler",
        "Steelers": "Ben Roethlisberger",
        "Bills": "Tyrod Taylor",
        "Dolphins": "Ryan Tannehill",
@@ -77,28 +76,30 @@ qbs = {"Redskins": "Kirk Cousins",
 
 rosters = collections.defaultdict(lambda: list())
 
-for (team, url) in links:
-    rosterRawHtml = requests.get(url).text
-    #print(rosterRawHtml)
+for (team, url) in team_urls:
+    roster_raw_html = requests.get(url).text
     p = re.compile(playerRegex)
-    matches = p.finditer(rosterRawHtml)
+    matches = p.finditer(roster_raw_html)
     for match in matches:
         [last, first] = match.group(2).split(", ")
+        jersey = match.group(1)
         full_name = "{} {}".format(first, last)
-        if full_name == qbs[team]:
-            print("{} {}".format(full_name, match.group(1)))
-        rosters[team].append(full_name)
+        """        if full_name == quarterbacks[team]:
+            print("{} {}".format(full_name, match.group(1)))"""
+        rosters[team].append((full_name, jersey))
 
-for roster in rosters:
-    if qbs[roster] not in rosters[roster]:
-        print("WARNING: {} not found on {}'s roster".format(qbs[roster], roster))
+print(json.dumps(rosters))
+
+"""for roster in rosters:
+    if quarterbacks[roster] not in rosters[roster]:
+        print("WARNING: {} not found on {}'s roster".format(quarterbacks[roster], roster))
     else:
-        print("OK: {} is on {}'s roster".format(qbs[roster], roster))
-    print(len(rosters[roster]))
+        print("OK: {} is on {}'s roster".format(quarterbacks[roster], roster))
+    print(len(rosters[roster]))"""
 
-if "Brienne Hoyer" not in rosters["49ers"]:
+"""if "Brienne Hoyer" not in rosters["49ers"]:
     print("Passed Brienne Hoyer sanity check")
 else:
-    print("FAILED Brienne Hoyer sanity check")
+    print("FAILED Brienne Hoyer sanity check")"""
 
 
