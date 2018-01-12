@@ -49,10 +49,11 @@ def tally_draft_picks(tally, message):
     c = collections.Counter(tally)
     total = len(list(tally))
     print(message)
-    for school in c:
-        percent = format(100 * c[school] / total, '.1f')
-        result = '{}: {}% ({}/{})'.format(school, percent, c[school], total)
+    for school in c.most_common():
+        percent = format(100 * c[school[0]] / total, '.1f')
+        result = '{}: {}% ({}/{})'.format(school[0], percent, c[school[0]], total)
         print(result)
+    print()
 
 def school_to_conference(school):
     if school in ACC:
@@ -91,7 +92,8 @@ def tally_drafts(years):
                         first_round_schools.append(school)
             except IndexError:
                 pass
-        
+    tally_draft_picks(schools, "ALL POWER-5 PICKS BY SCHOOL SINCE {}".format(START_YEAR))
+    tally_draft_picks(first_round_schools, "ALL POWER-5 FIRST ROUND PICKS BY SCHOOL SINCE {}".format(START_YEAR))
     draft_picks_by_conf = list(map(school_to_conference, schools))
     first_rounders = list(map(school_to_conference, first_round_schools))
     tally_draft_picks(draft_picks_by_conf, "ALL POWER-5 PICKS SINCE {}".format(START_YEAR))
