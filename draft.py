@@ -1,5 +1,14 @@
 #!/usr/bin/env python3 -tt
 
+"""Usage:
+  draft.py [options]
+
+Options:
+  -h --help               show this help message and exit
+  --from YEAR             start year [default: 1999]
+  --lastxyears NUM_YEARS  compute for last X years [default: -1]
+"""
+
 import requests
 import re
 import collections
@@ -9,26 +18,15 @@ import bs4
 import sys
 import maya
 import os.path
+from docopt import docopt
+
+arguments = docopt(__doc__)
 
 ACC = ['Boston College', 'Clemson', 'Florida State', 'Louisville', 'North Carolina State', 'NC State', 'Syracuse', 'Wake Forest', 'Duke', 'Georgia Tech', 'Miami', 'Miami (FL)', 'North Carolina', 'Pittsburgh', 'Virginia', 'Virginia Tech']
 BIG_12 = ['Baylor', 'Iowa State', 'Kansas', 'Kansas State', 'Oklahoma', 'Oklahoma State', 'TCU', 'Texas', 'Texas Tech', 'West Virginia']
 BIG_TEN = ['Illinois', 'Indiana', 'Iowa', 'Maryland', 'Michigan', 'Michigan State', 'Minnesota', 'Nebraska', 'Northwestern', 'Ohio State', 'Penn State', 'Purdue', 'Rutgers', 'Wisconsin']
 PAC_12 = ['Arizona', 'Arizona State', 'California', 'UCLA', 'Colorado', 'Oregon', 'Oregon State', 'USC', 'Stanford', 'Utah', 'Washington', 'Washington State']
 SEC = ['Alabama', 'Arkansas', 'Auburn', 'Florida', 'Georgia', 'Kentucky', 'LSU', 'Mississippi', 'Ole Miss', 'Mississippi State', 'Missouri', 'South Carolina', 'Tennessee', 'Texas A&M', 'Texas A&amp;M', 'Vanderbilt']
-
-POWER_5 = ACC + BIG_12 + BIG_TEN + PAC_12 + SEC
-
-last_five_years = True
-CURRENT_YEAR = maya.now().datetime().year
-FIRST_BCS_DRAFT_YEAR = 1999
-FIVE_YEARS_AGO = CURRENT_YEAR - 5
-TEN_YEARS_AGO = CURRENT_YEAR - 10
-url_template = 'https://en.wikipedia.org/wiki/{}_NFL_Draft'
-START_YEAR = FIRST_BCS_DRAFT_YEAR
-if last_five_years:
-    START_YEAR = FIVE_YEARS_AGO
-
-years = range(START_YEAR, CURRENT_YEAR)
 
 def is_draft_pick_row(row):
     return '<span id="Pick_' in str(row)
@@ -98,5 +96,13 @@ def tally_drafts(years):
     first_rounders = list(map(school_to_conference, first_round_schools))
     tally_draft_picks(draft_picks_by_conf, "ALL POWER-5 PICKS SINCE {}".format(START_YEAR))
     tally_draft_picks(first_rounders, "ALL POWER-5 FIRST ROUND PICKS SINCE {}".format(START_YEAR))
-     
-tally_drafts(years)
+
+if __name__ == '__main__':
+    POWER_5 = ACC + BIG_12 + BIG_TEN + PAC_12 + SEC
+    CURRENT_YEAR = maya.now().datetime().year
+    url_template = 'https://en.wikipedia.org/wiki/{}_NFL_Draft'
+    START_YEAR = int(arguments['--from'])
+    if arguments['--lastxyears'] != '-1':
+        START_YEAR = CURRENT_YEAR - int(arguments['--lastxyears'])
+    years = range(START_YEAR, CURRENT_YEAR)
+    tally_drafts(years)
