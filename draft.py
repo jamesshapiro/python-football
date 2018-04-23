@@ -43,10 +43,14 @@ def tally_draft_picks(tally, message):
     c = collections.Counter(tally)
     total = len(list(tally))
     print(message)
+    idx = 0
     for school in c.most_common():
         percent = format(100 * c[school[0]] / total, '.1f')
         result = '{}: {}% ({}/{})'.format(school[0], percent, c[school[0]], total)
         print(result)
+        idx += 1
+        if idx == 10:
+            break
     print()
 
 def school_to_conference(school):
@@ -73,12 +77,15 @@ def tally_drafts(years):
     tally_draft_picks(all_rounders, "ALL PICKS BY SCHOOL SINCE {}".format(START_YEAR))
     tally_draft_picks(all_first_rounders, "ALL FIRST ROUND PICKS BY SCHOOL SINCE {}".format(START_YEAR))
     draft_picks_by_conf = list(map(school_to_conference, all_rounders))
-    all_first_rounders = list(map(school_to_conference, all_first_rounders))
+    first_rounders_by_conf = list(map(school_to_conference, all_first_rounders))
     tally_draft_picks(draft_picks_by_conf, "ALL PICKS SINCE {}".format(START_YEAR))
-    tally_draft_picks(all_first_rounders, "ALL FIRST ROUND PICKS SINCE {}".format(START_YEAR))
-        
+    tally_draft_picks(first_rounders_by_conf, "ALL FIRST ROUND PICKS SINCE {}".format(START_YEAR))
+    power_five_all_picks = list(map(school_to_conference, filter(lambda school: SCHOOL_TO_CONF[school] != 'NOT POWER FIVE', all_rounders)))
+    power_five_first_rounders = list(map(school_to_conference, filter(lambda school: SCHOOL_TO_CONF[school] != 'NOT POWER FIVE', all_first_rounders)))
+    tally_draft_picks(power_five_all_picks, "ALL POWER FIVE PICKS SINCE {}".format(START_YEAR))
+    tally_draft_picks(power_five_first_rounders, "ALL POWER FIVE FIRST ROUND PICKS SINCE {}".format(START_YEAR))
+    
 if __name__ == '__main__':
-    POWER_5 = ACC + BIG_12 + BIG_TEN + PAC_12 + SEC
     CURRENT_YEAR = maya.now().datetime().year
     url_template = 'https://en.wikipedia.org/wiki/{}_NFL_Draft'
     START_YEAR = int(arguments['--from'])
