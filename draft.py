@@ -9,16 +9,12 @@ Options:
   --lastxyears NUM_YEARS  compute for last X years [default: -1]
 """
 
-import requests
-import re
 import collections
-import json
-from unidecode import unidecode
-import bs4
 import sys
 import maya
 import os.path
 from docopt import docopt
+import pandas as pd
 
 arguments = docopt(__doc__)
 
@@ -27,21 +23,21 @@ BIG_12 = ['Baylor', 'Iowa State', 'Kansas', 'Kansas State', 'Oklahoma', 'Oklahom
 BIG_TEN = ['Illinois', 'Indiana', 'Iowa', 'Maryland', 'Michigan', 'Michigan State', 'Minnesota', 'Nebraska', 'Northwestern', 'Ohio State', 'Penn State', 'Purdue', 'Rutgers', 'Wisconsin']
 PAC_12 = ['Arizona', 'Arizona State', 'California', 'UCLA', 'Colorado', 'Oregon', 'Oregon State', 'USC', 'Stanford', 'Utah', 'Washington', 'Washington State']
 SEC = ['Alabama', 'Arkansas', 'Auburn', 'Florida', 'Georgia', 'Kentucky', 'LSU', 'Mississippi', 'Ole Miss', 'Mississippi State', 'Missouri', 'South Carolina', 'Tennessee', 'Texas A&M', 'Texas A&amp;M', 'Vanderbilt']
-
-def is_draft_pick_row(row):
-    return '<span id="Pick_' in str(row)
-
-def get_html(url, year):
+POWER_FIVE_DICT = {'ACC': ACC, 'BIG_12': BIG_12, 'BIG_TEN': BIG_TEN, 'PAC_12': PAC_12, 'SEC': SEC}
+SCHOOL_TO_CONF = collections.defaultdict(lambda: 'NOT POWER FIVE')
+for (conference, schools) in POWER_FIVE_DICT.items():
+    SCHOOL_TO_CONF.update({school: conference for school in schools})
+        
+def get_data(url, year):
     if not os.path.isfile('./{}'.format(year)):
         print('downloading... ' + url)
-        text = unidecode(requests.get(url).text)
-        with open('./{}'.format(year), 'w') as f:
-            f.write(text)
-    else:
-        print('reading... ' + url)
-        with open('./{}'.format(year), 'r') as f:
-            text = f.read()
-    return text
+        data = pd.read_html(url,header=0)
+        index = get_index_of_target_table(data)
+        players = data[index]
+        players.to_csv('./{}'.format(year))
+    print('reading... ' + url)
+    players = pd.read_csv('./{}'.format(year))
+    return players
 
 def tally_draft_picks(tally, message):
     c = collections.Counter(tally)
@@ -54,49 +50,33 @@ def tally_draft_picks(tally, message):
     print()
 
 def school_to_conference(school):
-    if school in ACC:
-        return 'ACC'
-    elif school in BIG_12:
-        return 'Big 12'
-    elif school in BIG_TEN:
-        return 'Big Ten'
-    elif school in PAC_12:
-        return 'Pac 12'
-    else:
-        return 'SEC'
+    return SCHOOL_TO_CONF[school]
+    
+def get_index_of_target_table(data):
+    for table_index in range(len(data)):
+        players = data[table_index]
+        if 'Player' in players.columns:
+            return table_index
+    print("NO PLAYER TABLE")
+    sys.exit(1)
 
 def tally_drafts(years):
     urls = [url_template.format(year) for year in range(START_YEAR, CURRENT_YEAR)]
-    first_round_schools = []
-    schools = []
-    for url, year in zip(urls, years):
-        draft_picks_raw_html = get_html(url, year)
-        soup = bs4.BeautifulSoup(draft_picks_raw_html, "html.parser")
-        tag = 'tr'
-        tags = soup.find_all(tag)
-        tags = list(filter(is_draft_pick_row, tags))
-        for t in tags:
-            l = [child for child in t.children if child != u'\n']
-            result = list(re.split(r'[<>]', str(l[1])))
-            if len(result) == 5 or result[1] == 'th':
-                draft_round = result[2]
-            else:
-                draft_round = result[4]
-            try:
-                school = re.split(r'[<>]', str(l[6]))[4]
-                if school in POWER_5:
-                    schools.append(school)
-                    if draft_round == "1":
-                        first_round_schools.append(school)
-            except IndexError:
-                pass
-    tally_draft_picks(schools, "ALL POWER-5 PICKS BY SCHOOL SINCE {}".format(START_YEAR))
-    tally_draft_picks(first_round_schools, "ALL POWER-5 FIRST ROUND PICKS BY SCHOOL SINCE {}".format(START_YEAR))
-    draft_picks_by_conf = list(map(school_to_conference, schools))
-    first_rounders = list(map(school_to_conference, first_round_schools))
-    tally_draft_picks(draft_picks_by_conf, "ALL POWER-5 PICKS SINCE {}".format(START_YEAR))
-    tally_draft_picks(first_rounders, "ALL POWER-5 FIRST ROUND PICKS SINCE {}".format(START_YEAR))
-
+    all_first_rounders = []
+    all_rounders = []
+    for (url,year) in zip(urls,years):
+        players = get_data(url, year)
+        players['Name'] = players['Player'].apply(lambda x: x[len(x)//2 + 1:])
+        first_rounders = players[players['Rnd.'] == '1']
+        all_first_rounders.extend(list(first_rounders['College']))
+        all_rounders.extend(list(players['College']))
+    tally_draft_picks(all_rounders, "ALL PICKS BY SCHOOL SINCE {}".format(START_YEAR))
+    tally_draft_picks(all_first_rounders, "ALL FIRST ROUND PICKS BY SCHOOL SINCE {}".format(START_YEAR))
+    draft_picks_by_conf = list(map(school_to_conference, all_rounders))
+    all_first_rounders = list(map(school_to_conference, all_first_rounders))
+    tally_draft_picks(draft_picks_by_conf, "ALL PICKS SINCE {}".format(START_YEAR))
+    tally_draft_picks(all_first_rounders, "ALL FIRST ROUND PICKS SINCE {}".format(START_YEAR))
+        
 if __name__ == '__main__':
     POWER_5 = ACC + BIG_12 + BIG_TEN + PAC_12 + SEC
     CURRENT_YEAR = maya.now().datetime().year
