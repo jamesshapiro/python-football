@@ -1,82 +1,69 @@
 #!/usr/bin/env python3 -tt
 
-import requests
-import re
+import pandas as pd
 import collections
-import json
-import boto3
-import s3transfer
-from botocore.client import Config
-from unidecode import unidecode
-import bs4
-
-print('Hail to the Redskins!')
+#import boto3
+#import s3transfer
+import sys
+#from botocore.client import Config
 
 def lambda_handler(event, context):
-    default_player_tags = ['a', { "class" : "player-card-tooltip" }]
-    default_jersey_tags = ['td', { "class" : "col-jersey" }]
-    defaults = [default_player_tags, default_jersey_tags]
-    chargers_player_tags = ['a', { "class" : "player" }]
-    chargers_jersey_tags = ['div', { "class": "field field--name-field-jersey-number field--type-number-integer field--label-hidden" } ]
-    chargers_defaults = [chargers_player_tags, chargers_jersey_tags]
-    
-    team_urls = [("Redskins", "http://www.redskins.com/team/roster.html", defaults),
-         ("Broncos", "http://www.denverbroncos.com/team/roster.html", defaults),
-         ("Chiefs", "http://www.chiefs.com/team/roster.html", defaults),
-         ("Chargers", "http://www.chargers.com/team/roster", chargers_defaults),
-         ("Raiders", "http://www.raiders.com/team/roster.html", defaults),
-         ("Texans", "http://www.houstontexans.com/team/roster.html", defaults),
-         ("Colts", "http://www.colts.com/team/roster.html", defaults),
-         ("Jaguars", "http://www.jaguars.com/team/roster.html", defaults),
-         ("Titans", "http://www.titansonline.com/team/roster.html", defaults),
-         ("Ravens", "http://www.baltimoreravens.com/team/roster.html", defaults),
-         ("Bengals", "http://www.bengals.com/team/roster.html", defaults),
-         ("Browns", "http://www.clevelandbrowns.com/team/roster.html", defaults),
-         ("Steelers", "http://www.steelers.com/team/roster.html", defaults),
-         ("Bills", "http://www.buffalobills.com/team/roster.html", defaults),
-         ("Dolphins", "http://www.miamidolphins.com/team/player-roster.html", defaults),
-         ("Patriots", "http://www.patriots.com/team/roster", chargers_defaults),
-         ("Jets", "http://www.newyorkjets.com/team/roster.html", defaults),
-         ("Cowboys", "http://www.dallascowboys.com/team/roster.html", chargers_defaults),
-         ("Eagles", "http://www.philadelphiaeagles.com/team/roster.html", defaults),
-         ("Giants", "http://www.giants.com/team/roster.html", defaults),
-         ("Bears", "http://www.chicagobears.com/team/roster.html", defaults),
-         ("Lions", "http://www.detroitlions.com/team/roster.html", defaults),
-         ("Packers", "http://www.packers.com/team/players.html", defaults),
-         ("Vikings", "http://www.vikings.com/team/roster.html", defaults),
-         ("Falcons", "http://www.atlantafalcons.com/team/player-roster.html", defaults),
-         ("Panthers", "http://www.panthers.com/team/roster.html", defaults),
-         ("Saints", "http://www.neworleanssaints.com/team/roster.html", defaults),
-         ("Buccaneers", "http://www.buccaneers.com/team-and-stats/roster.html", defaults),
-         ("Cardinals", "http://www.azcardinals.com/roster/player-roster.html", defaults),
-         ("Rams", "http://www.therams.com/team/roster.html", defaults),
-         ("49ers", "http://www.49ers.com/team/roster.html", defaults),
-         ("Seahawks", "http://www.seahawks.com/team/roster", chargers_defaults)]
+    team_urls = [("Redskins", "http://www.redskins.com/team/roster.html", 0),
+         ("Broncos", "http://www.denverbroncos.com/team/roster.html", 0),
+         ("Chiefs", "http://www.chiefs.com/team/roster.html", 0),
+         ("Chargers", "http://www.chargers.com/team/roster", 0),
+         ("Raiders", "http://www.raiders.com/team/roster.html", 0),
+         ("Texans", "http://www.houstontexans.com/team/roster.html", 0),
+         ("Colts", "http://www.colts.com/team/roster.html", 0),
+         ("Jaguars", "http://www.jaguars.com/team/roster.html", 2),
+         ("Titans", "http://www.titansonline.com/team/roster.html", 0),
+         ("Ravens", "http://www.baltimoreravens.com/team/roster.html", 0),
+         ("Bengals", "http://www.bengals.com/team/roster.html", 0),
+         ("Browns", "http://www.clevelandbrowns.com/team/roster.html", 0),
+         ("Steelers", "http://www.steelers.com/team/roster.html", 0),
+         ("Bills", "http://www.buffalobills.com/team/roster.html", 0),
+         ("Dolphins", "http://www.miamidolphins.com/team/player-roster.html", 0),
+         ("Patriots", "http://www.patriots.com/team/roster", 0),
+         ("Jets", "http://www.newyorkjets.com/team/roster.html", 0),
+         ("Cowboys", "http://www.dallascowboys.com/team/roster.html", 0),
+         ("Eagles", "http://www.philadelphiaeagles.com/team/roster.html", 0),
+         ("Giants", "http://www.giants.com/team/roster.html", 0),
+         ("Bears", "http://www.chicagobears.com/team/roster.html", 0),
+         ("Lions", "http://www.detroitlions.com/team/roster.html", 1),
+         ("Packers", "http://www.packers.com/team/players.html", 0),
+         ("Vikings", "http://www.vikings.com/team/roster.html", 0),
+         ("Falcons", "http://www.atlantafalcons.com/team/player-roster.html", 0),
+         ("Panthers", "http://www.panthers.com/team/roster.html", 0),
+         ("Saints", "http://www.neworleanssaints.com/team/roster.html", 0),
+         ("Buccaneers", "http://www.buccaneers.com/team-and-stats/roster.html", 0),
+         ("Cardinals", "http://www.azcardinals.com/roster/player-roster.html", 0),
+         ("Rams", "http://www.therams.com/team/roster.html", 0),
+         ("49ers", "http://www.49ers.com/team/roster.html", 0),
+         ("Seahawks", "http://www.seahawks.com/team/roster", 0)]
     rosters = collections.defaultdict(lambda: list())
-    for team, url, tags in team_urls:
-        roster_raw_html = unidecode(requests.get(url).text)
-        soup = bs4.BeautifulSoup(roster_raw_html, "html.parser")
-        player_tags = soup.find_all(*tags[0])
-        jersey_tags = soup.find_all(*tags[1])
-        if tags == defaults:
-            names = [' '.join(player['title'].split(', ')[::-1]) for player in player_tags]
-            jerseys = [number.get_text().strip() for number in jersey_tags]
-        elif tags == chargers_defaults:
-            names = [' '.join(player.get_text().split(', ')[::-1]) for player in player_tags]
-            jerseys = [number.get_text().strip() for number in jersey_tags]
-        j = 0
-        if team == "Patriots":
-            j += 6
-        for i in range(j, j+53):
-            rosters[team].append((names[i], jerseys[i]))
+
+    dfs = []
+    for team, url, table_index in team_urls:
+        data = pd.read_html(url)[table_index]
+        data.columns = list(map(lambda column: "".join(column.split()), data.columns.values))
+        data['Team'] = data['Age'].apply(lambda x: team)
+        dfs.append(data)
+    
+    rosters = pd.concat(dfs)
     # S3 Connect
+    """
     client = boto3.client('s3')
     g = open('/tmp/rosters.json', 'w')
     g.write(json.dumps(rosters))
     g.close()
+    """
     
-    with open('/tmp/rosters.json', 'rb') as f:
+    """    with open('/tmp/rosters.json', 'rb') as f:
         client.upload_fileobj(f, 'nflrosters', 'rosters.json', ExtraArgs={'ACL': 'public-read'})
-        
-    print([(team, len(rosters[team])) for team in rosters.keys()])
+    """        
     return rosters
+
+my_rosters = lambda_handler(None, None)
+print("Top 20 schools by number of NFL players currently on a roster:")
+print(my_rosters['College'].value_counts().head(10))
+
