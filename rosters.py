@@ -8,8 +8,22 @@ import sys
 #from botocore.client import Config
 
 def nameToPlayer(lastfirst):
-    last, first = lastfirst.split(', ')
-    return '{} {}'.format(first, last)
+    if type(lastfirst) == str:
+        if len(lastfirst.split(', ')) == 2:
+            last, first = lastfirst.split(', ')
+            return '{} {}'.format(first, last)
+    print(lastfirst)
+    return lastfirst
+
+def heightToInches(height):
+    if type(height) == str:
+        height = height.replace('"','').replace("'",'-').split('-')
+        inches = 0
+        feet = int(height[0])
+        if len(height) == 2:
+            inches = int(height[1])
+        return feet * 12 + inches
+    return height
 
 def lambda_handler(event, context):
     team_urls = [('Redskins', 'http://www.redskins.com/team/roster.html', 0),
@@ -51,17 +65,16 @@ def lambda_handler(event, context):
         print('loading {}...'.format(team))
         data = pd.read_html(url)[table_index]
         cols = list(map(lambda column: ''.join(column.split()), data.columns.values))
-        print(cols)
+        cols = list(map(lambda column: column.replace('.','').capitalize(), cols))
+        data.columns = cols
         if 'Name' in cols:
             data['Player'] = data['Name'].apply(nameToPlayer)
             data = data.drop(['Name'], axis=1)
-        print('okay so far')
-        cols = list(map(lambda column: column.replace('.','').capitalize(), cols))
-        data.columns = cols
         data['Team'] = data['Age'].apply(lambda x: team)
+        data['HtInches'] = data['Ht'].apply(heightToInches)
         dfs.append(data)
     
-    rosters = pd.concat(dfs)
+    rosters = pd.concat(dfs, ignore_index=True)
     # S3 Connect
     """
     client = boto3.client('s3')
@@ -79,3 +92,9 @@ my_rosters = lambda_handler(None, None)
 print('Top 20 schools by number of NFL players currently on a roster:')
 print(my_rosters['College'].value_counts().head(10))
 print(my_rosters.head(10))
+
+print('The heaviest player in the NFL')
+print(my_rosters.iloc(0)[my_rosters['Wt'].idxmax()])
+
+print('The tallest players in the draft')
+print(my_rosters[my_rosters['HtInches'] == my_rosters['HtInches'].max()])
